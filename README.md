@@ -1,6 +1,11 @@
 # Options Trading Environment
 
-Created Options Trading Environment to trade and select options based on current price and price of the asset
+Created Options Trading Environment to trade and select options based on current price and price of the asset. Was able to take account from 2,000 to peak of 130,000 dollars. System was set up to send notification to manually enter and exit trade. Attempts at automation as being worked on right now. Results can be seen in `Trading Results` folder
+
+
+<img src="https://github.com/user-attachments/assets/88dd1190-3346-4dfb-acfd-93f847e2eef7" width="200" />
+
+<img src="https://github.com/user-attachments/assets/543b75f8-b95e-4a6e-97bd-b70254c5015b" width="200" />
 
 Options are difficult to manage as they come and go out of existence as they only live for a limited amount of time. 
 To train a model that is capable of handling assets that are moving in and out at such a fast pace, we can organize the 
