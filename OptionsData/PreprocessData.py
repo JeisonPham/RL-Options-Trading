@@ -11,6 +11,7 @@ import pickle
 import os
 import pandas_market_calendars as mcal
 from tqdm import tqdm
+from polygon import RESTClient
 
 from tqdm import tqdm
 
@@ -23,7 +24,10 @@ class Preprocessor():
                  time_interval: str,
                  strike_delta: int,
                  expiration_delta: int,
-                 data_folder: str = "./Data", *args, **kwargs):
+                 data_folder: str = "./Data",
+                 API_KEY: Optional[str] = None,
+                 API: Optional[RESTClient] = None,
+                 *args, **kwargs):
 
         self.ticker_list = ticker_list
         self.start_date = start_date
@@ -31,6 +35,7 @@ class Preprocessor():
         self.strike_delta = strike_delta
         self.expiration_delta = expiration_delta
         self.data_folder = data_folder
+        self.API = RESTClient(api_key=API_KEY)
 
         if time_interval == "1Day":
             self.multiplier, self.timespan = 1, "day"
@@ -162,7 +167,7 @@ class Preprocessor():
             if len(df) == 0:
                 return 0
             df = df.row(0, named=True)
-            return df['close']
+            return df['close'] * 100
 
         option_tickers = avail_tickers.to_numpy().flatten()
         values = {
@@ -189,6 +194,7 @@ class Preprocessor():
 
             result = self.get_options_price(current_date, underlying_ticker, strike_prices, expiration_dates, type_)
             result['stock_price'] = price
+            result['tech_ema'] = self.get_ema(underlying_ticker, current_date)
             result['contract_type'] = type_
             next_result = self.get_options_price(next_date, underlying_ticker, strike_prices, expiration_dates,
                                                  type_, next=True)
@@ -203,14 +209,27 @@ class Preprocessor():
             results = list(tqdm(executor.map(helper, dates), total=len(dates)))
 
         df = pd.concat(results, axis=0).reset_index(drop=True)
-        file_path = os.path.join(self.data_folder, f"{underlying_ticker}_{type_}_processed.csv")
-        df.to_csv(file_path, index=False)
+        file_path = os.path.join(self.data_folder, f"{underlying_ticker}_{type_}_processed.pkl")
+        df = pl.from_dataframe(df)
+
+        with open(file_path, 'wb') as file:
+            pickle.dump(df, file)
+
+    def get_ema(self, underlying_ticker, date):
+        data = [agg.__dict__ for agg in self.API.get_ema(
+            ticker=underlying_ticker,
+            timestamp=date.strftime("%Y-%m-%d"),
+            timespan=self.timespan,
+            window=50
+        ).values]
+
+        data = pl.DataFrame(data)
 
 
 if __name__ == "__main__":
     env_kwargs = {
         'ticker_list': ['SPY'],
-        'time_interval': "1Day",
+        'time_interval': "15minute",
         'hmax': 200,
         "start_date": "2023-01-01",
         "end_date": "2024-06-10",

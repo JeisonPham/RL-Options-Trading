@@ -79,11 +79,11 @@ class PolygonDownloader:
 
     def download_stock_history(self, underlying_symbol, file_path="./Data"):
         file_name = os.path.join(file_path, f"{underlying_symbol}_prices.pkl")
-        if os.path.exists(file_name):
-            with open(file_name, "rb") as file:
-                tickers = pickle.load(file)
-
-            return
+        # if os.path.exists(file_name):
+        #     with open(file_name, "rb") as file:
+        #         tickers = pickle.load(file)
+        #
+        #     return
 
         start = dt.datetime.strptime(self.start_date, "%Y-%m-%d")
         end = dt.datetime.strptime(self.end_date, "%Y-%m-%d")
@@ -108,14 +108,22 @@ class PolygonDownloader:
             df = pl.DataFrame(data).with_columns(
                 date=pl.from_epoch('timestamp', time_unit='ms')
             )
+
+            df = df.with_columns(pl.col("volume").cast(pl.Float32))
             temp_df = pl.concat([temp_df, df])
 
         with open(file_name, "wb") as file:
             pickle.dump(temp_df, file)
 
+    def download_technical_indicators(self, underlying_symbol, file_path="./Data"):
+        start = dt.datetime.strptime(self.start_date, "%Y-%m-%d")
+        end = dt.datetime.strptime(self.end_date, "%Y-%m-%d")
+        dates = pl.datetime_range(start=start, end=end, interval="1d", eager=True).to_list()
+
+
 
 if __name__ == "__main__":
-    downloader = PolygonDownloader("2023-01-01", "2024-06-14", "SP7gdSLbEGk_UDZgaeY0V_dGBfQpVULd")
-    downloader.download_available_options_contracts("SPY")
+    downloader = PolygonDownloader("1990-01-01", "2024-06-14", "SP7gdSLbEGk_UDZgaeY0V_dGBfQpVULd")
+    # downloader.download_available_options_contracts("SPY")
     # downloader.download_options_history("SPY")
-    # downloader.download_stock_history("SPY")
+    downloader.download_stock_history("SPY")

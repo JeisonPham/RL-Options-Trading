@@ -1,5 +1,10 @@
 import numpy as np
 import polars as pl
+import pandas as pd
+
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 from typing import Optional, Dict, Any, List, Union
 
@@ -10,13 +15,17 @@ class StateClass:
                  ticker_list: List[str] = ["SPY"],
                  strike_delta: int = 10,
                  expiration_delta: int = 10,
-                 num_indicators: int = 3):
+                 num_indicators: int = 3,
+                 call_price_multiplier: float = 1,
+                 put_price_multiplier: float = 1):
         self._balance: float = balance
         self.ticker_list = ticker_list
         self.num_tickers: int = len(self.ticker_list)
         self.strike_delta: int = strike_delta
         self.expiration_delta: int = expiration_delta
         self.num_indicators: int = num_indicators
+        self.call_price_multiplier: float = call_price_multiplier
+        self.put_price_multiplier: float = put_price_multiplier
 
         self._stock_price: np.ndarray = np.array([])
         self._next_stock_price: np.ndarray = np.array([])
@@ -68,7 +77,7 @@ class StateClass:
 
     @property
     def call_prices(self) -> np.ndarray:
-        return self._call_prices
+        return self._call_prices * self.call_price_multiplier
 
     @call_prices.setter
     def call_prices(self, value: np.ndarray) -> None:
@@ -81,7 +90,7 @@ class StateClass:
 
     @property
     def put_prices(self) -> np.ndarray:
-        return self._put_prices
+        return self._put_prices * self.put_price_multiplier
 
     @put_prices.setter
     def put_prices(self, value: np.ndarray) -> None:
@@ -199,7 +208,27 @@ class StateClass:
         L += self.put_owned.flatten().tolist()
         L += self.technical_indicators.flatten().tolist()
 
-        return np.array(L)
+        return np.array(L, dtype=np.float32)
 
     def value(self):
-        return self.balance + np.sum(self.call_prices * self.call_owned) + np.sum(self.put_prices * self.put_owned)
+        return self.balance + np.sum(self.call_prices * self.call_owned * 100) + np.sum(self.put_prices * self.put_owned * 100)
+
+    def printinfo(self):
+        print("Balance: ", self.balance)
+        print("Total Worth: ", self.value())
+        for i, ticker in enumerate(self.ticker_list):
+            print(f"Printing Information for {ticker}")
+            print("=" * 20)
+
+            def helper(attr):
+                data = getattr(self, attr)[i]
+                df = pd.DataFrame(data=data, index=self.strike_prices[i], columns=self.expiration_dates)
+                print(attr)
+                print(df)
+                print("")
+
+            # attributes = ["call_owned", "call_prices"]
+            attributes = ["call_owned", "put_owned", "call_prices", "put_prices"]
+            for attr in attributes:
+                helper(attr)
+
